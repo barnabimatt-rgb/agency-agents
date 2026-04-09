@@ -1,14 +1,5 @@
 openai
+notion-client
 requests
 python-dotenv
-notion-client
 pytz
-
-# Agent dependencies
-beautifulsoup4
-google-api-python-client
-pandas
-numpy
-
-# Optional but recommended for stability
-tiktoken
