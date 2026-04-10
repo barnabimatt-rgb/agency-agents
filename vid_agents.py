@@ -1,15 +1,24 @@
-from openai import OpenAI
 import os
 import subprocess
 import base64
 import requests
+from openai import OpenAI
 
-# Initialize OpenAI client
+# New imports for upgraded HybridAgent
+from script_parser import ScriptParser
+from media_resolver import MediaResolver
+from video_assembler import VideoAssembler
+
+
+# ============================================================
+# OPENAI CLIENT
+# ============================================================
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # ============================================================
-# SIMPLE VIDEO AGENT
+# SIMPLE VIDEO AGENT (your original)
 # ============================================================
 
 class SimpleVideoAgent:
@@ -34,10 +43,8 @@ class SimpleVideoAgent:
             prompt=prompt
         )
 
-        # Extract base64 image data
         image_base64 = result.data[0].b64_json
 
-        # Decode and save
         with open(filename, "wb") as f:
             f.write(base64.b64decode(image_base64))
 
@@ -52,7 +59,6 @@ class SimpleVideoAgent:
 
         os.makedirs("output", exist_ok=True)
 
-        # Write binary audio content correctly
         with open(filename, "wb") as f:
             f.write(response.read())
 
@@ -87,7 +93,7 @@ class SimpleVideoAgent:
 
 
 # ============================================================
-# MID-TIER VIDEO AGENT (placeholder for now)
+# MID-TIER VIDEO AGENT (still a placeholder)
 # ============================================================
 
 class MidTierVideoAgent:
@@ -97,13 +103,50 @@ class MidTierVideoAgent:
 
 
 # ============================================================
-# HYBRID AGENT (fallback mode)
+# NEW HYBRID AGENT (full upgrade)
 # ============================================================
 
 class HybridAgent:
+    """
+    Upgraded HybridAgent:
+    - Generates script/title/description
+    - Parses cues (ScriptParser)
+    - Resolves B-roll (MediaResolver)
+    - Assembles full video (VideoAssembler)
+    - Falls back to SimpleVideoAgent if needed
+    """
+
     def __init__(self):
+        self.client = client
         self.simple = SimpleVideoAgent()
         self.mid = MidTierVideoAgent()
 
-    def run(self, topic):
-        return self.simple.run(topic)
+        # New components
+        self.script_parser = ScriptParser()
+        self.media_resolver = MediaResolver()
+        self.video_assembler = VideoAssembler()
+
+    def _generate_script_title_description(self, topic):
+        prompt = f"""
+        You are writing a short-form video script for a hybrid athlete, tactical, AI-automation creator.
+
+        Topic: "{topic}"
+
+        1) Write a 30–45 second script that:
+           - Uses bracketed cues for B-roll, music, SFX, and on-screen text.
+           - Is punchy, direct, and practical.
+           - Speaks from the perspective of someone who actually trains and builds systems.
+
+           Use cues like:
+           - [INTRO: Energetic music begins]
+           - [ON-SCREEN TEXT: ...]
+           - [B-ROLL: ...]
+           - [SFX: ...]
+           - [MUSIC: ...]
+           - [CUT TO: ...]
+
+        2) Then on a new line, write:
+           TITLE: <compelling title, 5–10 words>
+
+        3) Then on a new line, write:
+           DESCRIPTION
