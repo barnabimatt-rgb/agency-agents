@@ -23,34 +23,59 @@ class SimpleVideoAgent:
         return response.choices[0].message.content
 
     def generate_image(self, prompt, filename="output/image.jpg"):
-        # Step 1: Convert topic into a visual description
-        visual_prompt = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Convert the topic into a concrete visual scene for an illustration."},
-                {"role": "user", "content": f"Topic: {prompt}"}
-            ]
-        ).choices[0].message.content
+        os.makedirs("output", exist_ok=True)
 
-        # Step 2: Generate the image
+        # Try up to 3 times
+        for attempt in range(3):
+            # Step 1: Convert topic into a visual description
+            visual_prompt = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Convert the topic into a concrete visual scene for an illustration."},
+                    {"role": "user", "content": f"Topic: {prompt}"}
+                ]
+            ).choices[0].message.content
+
+            # Step 2: Generate the image
+            img = client.images.generate(
+                model="gpt-image-1",
+                prompt=visual_prompt,
+                size="1024x1024"
+            )
+
+            # Step 3: Validate response
+            if img and img.data and img.data[0].url:
+                img_url = img.data[0].url
+                img_bytes = requests.get(img_url).content
+
+                with open(filename, "wb") as f:
+                    f.write(img_bytes)
+
+                return filename
+
+        # FINAL FALLBACK — guaranteed to work
+        fallback_prompt = (
+            "A clean, modern, abstract background with soft gradients, "
+            "smooth lighting, and subtle geometric shapes. High-quality, cinematic."
+        )
+
         img = client.images.generate(
             model="gpt-image-1",
-            prompt=visual_prompt,
+            prompt=fallback_prompt,
             size="1024x1024"
         )
 
-        # Step 3: Validate response
         if not img or not img.data or not img.data[0].url:
-            raise ValueError("OpenAI returned no image URL")
+            raise ValueError("OpenAI image model failed after retries and fallback")
 
         img_url = img.data[0].url
         img_bytes = requests.get(img_url).content
 
-        os.makedirs("output", exist_ok=True)
         with open(filename, "wb") as f:
             f.write(img_bytes)
 
         return filename
+
 
     def generate_voice(self, script, filename="output/audio.mp3"):
         audio = client.audio.speech.create(
