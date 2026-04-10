@@ -1,71 +1,74 @@
-import logging
-
-from agents import (
-    generate_content,
-    generate_product,
-    optimize_funnel,
-    generate_strategy_review,
-    pull_analytics,
-)
-from notion_writer import log_entry
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
-logger = logging.getLogger(__name__)
+import time
+import schedule
+from youtube_agent import youtube_upload_agent
 
 
-def run_all_cycles():
-    logger.info("🚀 Starting passive income cycle...")
+# ---------------------------------------------------------
+# 1. Task Router
+# ---------------------------------------------------------
+def run_task(task):
+    task_type = task.get("type")
 
-    # Content
-    content = generate_content()
-    log_entry(
-        title="Content Cycle",
-        item_type="Content",
-        status="Done",
-        notes=content,
+    if task_type == "youtube_upload":
+        return handle_youtube_upload(task)
+
+    print(f"[Orchestrator] Unknown task type: {task_type}")
+    return None
+
+
+# ---------------------------------------------------------
+# 2. YouTube Upload Handler
+# ---------------------------------------------------------
+def handle_youtube_upload(task):
+    video_path = task.get("video_path")
+    title = task.get("title")
+    description = task.get("description")
+    tags = task.get("tags", [])
+
+    print(f"[YouTube] Uploading video: {title}")
+
+    result = youtube_upload_agent(
+        video_path=video_path,
+        title=title,
+        description=description,
+        tags=tags
     )
 
-    # Product
-    product = generate_product()
-    log_entry(
-        title="Product Cycle",
-        item_type="Product",
-        status="Done",
-        notes=product,
-    )
-
-    # Funnel
-    funnel = optimize_funnel()
-    log_entry(
-        title="Funnel Optimization",
-        item_type="Funnel",
-        status="Done",
-        notes=funnel,
-    )
-
-    # Strategy
-    strategy = generate_strategy_review()
-    log_entry(
-        title="Strategy Review",
-        item_type="Strategy",
-        status="Done",
-        notes=strategy,
-    )
-
-    # Analytics
-    analytics = pull_analytics()
-    log_entry(
-        title="Analytics Snapshot",
-        item_type="Analytics",
-        status="Done",
-        notes=analytics,
-    )
-
-    logger.info("✅ Passive income cycle complete.")
+    print(f"[YouTube] Upload complete: {result['video_url']}")
+    return result
 
 
+# ---------------------------------------------------------
+# 3. Example Scheduled YouTube Job (optional)
+# ---------------------------------------------------------
+def scheduled_youtube_job():
+    task = {
+        "type": "youtube_upload",
+        "video_path": "output/video.mp4",
+        "title": "Automated Upload",
+        "description": "Uploaded automatically by the orchestrator.",
+        "tags": ["automation", "ai"]
+    }
+    run_task(task)
+
+
+# ---------------------------------------------------------
+# 4. Scheduler Loop (Railway-safe)
+# ---------------------------------------------------------
+def start_scheduler():
+    # Example: run every 4 hours (your preferred cadence)
+    schedule.every(4).hours.do(scheduled_youtube_job)
+
+    print("[Orchestrator] Scheduler started. Running tasks...")
+
+    while True:
+        schedule.run_pending()
+        time.sleep(5)
+
+
+# ---------------------------------------------------------
+# 5. Entry Point
+# ---------------------------------------------------------
 if __name__ == "__main__":
-    run_all_cycles()
+    print("[Orchestrator] Starting service...")
+    start_scheduler()
