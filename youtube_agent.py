@@ -6,9 +6,6 @@ from googleapiclient.http import MediaFileUpload
 import requests
 
 
-# ---------------------------------------------------------
-# 1. Build YouTube API client using refresh token
-# ---------------------------------------------------------
 def get_youtube_client():
     creds = Credentials(
         None,
@@ -21,9 +18,6 @@ def get_youtube_client():
     return build("youtube", "v3", credentials=creds)
 
 
-# ---------------------------------------------------------
-# 2. Upload video to YouTube
-# ---------------------------------------------------------
 def upload_to_youtube(video_path, title, description, tags=None, category_id="22", privacy="public"):
     youtube = get_youtube_client()
 
@@ -62,9 +56,6 @@ def upload_to_youtube(video_path, title, description, tags=None, category_id="22
     }
 
 
-# ---------------------------------------------------------
-# 3. Log upload to Notion (matches your schema)
-# ---------------------------------------------------------
 def log_to_notion(video_data):
     notion_key = os.getenv("NOTION_API_KEY")
     db_id = os.getenv("NOTION_LOG_DB")
@@ -88,9 +79,6 @@ def log_to_notion(video_data):
     requests.post(url, headers=headers, json=payload)
 
 
-# ---------------------------------------------------------
-# 4. Main agent function
-# ---------------------------------------------------------
 def youtube_upload_agent(video_path, title, description, tags=None):
     print("Uploading to YouTube...")
     result = upload_to_youtube(video_path, title, description, tags)
