@@ -4,6 +4,7 @@ import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from google.auth.transport.requests import Request
 
 
 def get_youtube_client():
@@ -27,9 +28,9 @@ def get_youtube_client():
         scopes=["https://www.googleapis.com/auth/youtube.upload"]
     )
 
-    # Attempt to refresh the access token
+    # Correct refresh call
     try:
-        creds.refresh(requests.Request())
+        creds.refresh(Request())
     except Exception as e:
         print("❌ Failed to refresh YouTube token:", e)
         return None
@@ -56,7 +57,6 @@ def upload_to_youtube(video_path, title, description, tags=None, category_id="22
         }
     }
 
-    # THIS is the line that was broken before — now fixed
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
 
     try:
