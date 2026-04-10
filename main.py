@@ -3,14 +3,12 @@ import schedule
 import requests
 import os
 
-# -----------------------------
-# Agent Imports
-# -----------------------------
 from youtube_agent import youtube_upload_agent
 from youtube_metadata_agent import (
     generate_youtube_metadata,
     generate_thumbnail
 )
+from youtube_analytics_agent import youtube_analytics_agent
 
 
 # =========================================================
@@ -45,7 +43,9 @@ def fetch_tasks_from_notion():
             "video_path": props.get("Video Path", {}).get("rich_text", [{}])[0].get("plain_text", ""),
             "title": props.get("Title", {}).get("rich_text", [{}])[0].get("plain_text", ""),
             "description": props.get("Description", {}).get("rich_text", [{}])[0].get("plain_text", ""),
-            "tags": [t["name"] for t in props.get("Tags", {}).get("multi_select", [])]
+            "tags": [t["name"] for t in props.get("Tags", {}).get("multi_select", [])],
+            "video_id": props.get("Video ID", {}).get("rich_text", [{}])[0].get("plain_text", ""),
+            "url": props.get("URL", {}).get("url", "")
         }
 
         tasks.append(task)
@@ -68,28 +68,28 @@ def run_task(task):
     if task_type == "youtube_full_auto":
         return handle_youtube_full_auto(task)
 
+    if task_type == "youtube_analytics":
+        return handle_youtube_analytics(task)
+
     print(f"[Orchestrator] Unknown task type: {task_type}")
     return None
 
 
 # =========================================================
-# 3. HANDLERS
+# 3. HANDLERS (MULTI-AGENT COLLAB)
 # =========================================================
-
-# -----------------------------
-# Auto Title / Description / Thumbnail
-# -----------------------------
 def handle_youtube_metadata(task):
     topic = task.get("topic")
 
     print(f"[YouTube Metadata] Generating metadata for: {topic}")
 
-    title, description = generate_youtube_metadata(topic)
-    thumbnail_path = generate_thumbnail(topic)
+    title, description, tags = generate_youtube_metadata(topic)
+    thumbnail_path = generate_thumbnail(topic, title_for_text=title)
 
     result = {
         "title": title,
         "description": description,
+        "tags": tags,
         "thumbnail_path": thumbnail_path
     }
 
@@ -97,9 +97,6 @@ def handle_youtube_metadata(task):
     return result
 
 
-# -----------------------------
-# YouTube Upload
-# -----------------------------
 def handle_youtube_upload(task):
     video_path = task.get("video_path")
     title = task.get("title")
@@ -119,14 +116,83 @@ def handle_youtube_upload(task):
     return result
 
 
-# -----------------------------
-# Full Auto Pipeline (Metadata → Upload)
-# -----------------------------
+def handle_youtube_analytics(task):
+    video_id = task.get("video_id")
+    url = task.get("url")
+
+    if not video_id and url and "v=" in url:
+        video_id = url.split("v=")[-1].split("&")[0]
+
+    if not video_id:
+        print("[Analytics] No video_id provided.")
+        return None
+
+    print(f"[Analytics] Fetching stats for video: {video_id}")
+    stats = youtube_analytics_agent(video_id, url or f"https://www.youtube.com/watch?v={video_id}")
+    return stats
+
+
 def handle_youtube_full_auto(task):
     topic = task.get("topic")
     video_path = task.get("video_path")
 
     print(f"[Full Auto] Starting full YouTube pipeline for: {topic}")
 
-    # Step 1: Metadata
-    meta = handle
+    meta = handle_youtube_metadata({
+        "type": "youtube_metadata",
+        "topic": topic
+    })
+
+    upload = handle_youtube_upload({
+        "type": "youtube_upload",
+        "video_path": video_path,
+        "title": meta["title"],
+        "description": meta["description"],
+        "tags": meta["tags"]
+    })
+
+    analytics = handle_youtube_analytics({
+        "type": "youtube_analytics",
+        "video_id": upload["video_id"],
+        "url": upload["video_url"]
+    })
+
+    return {
+        "title": meta["title"],
+        "description": meta["description"],
+        "tags": meta["tags"],
+        "thumbnail_path": meta["thumbnail_path"],
+        "youtube_url": upload["video_url"],
+        "video_id": upload["video_id"],
+        "analytics": analytics
+    }
+
+
+# =========================================================
+# 4. SCHEDULER
+# =========================================================
+def scheduled_cycle():
+    print("[Scheduler] Checking Notion for tasks...")
+    tasks = fetch_tasks_from_notion()
+
+    for task in tasks:
+        print(f"[Scheduler] Running task: {task['type']}")
+        run_task(task)
+
+
+def start_scheduler():
+    schedule.every(4).hours.do(scheduled_cycle)
+
+    print("[Orchestrator] Scheduler started. Running tasks...")
+
+    while True:
+        schedule.run_pending()
+        time.sleep(5)
+
+
+# =========================================================
+# 5. ENTRY POINT
+# =========================================================
+if __name__ == "__main__":
+    print("[Orchestrator] Starting service...")
+    start_scheduler()
