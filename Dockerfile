@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
     ca-certificates \
+    libssl-dev \
+    libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
