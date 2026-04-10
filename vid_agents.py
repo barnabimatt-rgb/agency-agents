@@ -95,6 +95,7 @@ def generate_image(self, prompt, filename="output/image.jpg"):
 
 
 
+
 # ============================================================
 # MID-TIER VIDEO AGENT (placeholder for now)
 # ============================================================
