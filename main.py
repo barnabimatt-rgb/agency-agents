@@ -1,9 +1,8 @@
 from notion_client_wrapper import NotionWrapper
-from youtube_client import YouTubeClient
+from youtube_agent import youtube_upload_agent
 from vid_agents import HybridAgent  # updated to match your filename
 
 notion = NotionWrapper()
-youtube = YouTubeClient()
 hybrid = HybridAgent()
 
 
@@ -40,11 +39,13 @@ def process_tasks():
             continue
 
         print("Uploading to YouTube...")
-        url = youtube.upload_video(
-            filepath=video_path,
-            title=topic,
-            description=script
+        result = youtube_upload_agent(
+            video_path,
+            topic,
+            script
         )
+
+        url = result["video_url"] if result else None
 
         if url:
             try:
