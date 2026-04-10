@@ -44,15 +44,17 @@ class SimpleVideoAgent:
         return filename
 
     def generate_voice(self, script, filename="output/audio.mp3"):
-        audio = self.client.audio.speech.create(
+        response = self.client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice="alloy",
             input=script
         )
 
         os.makedirs("output", exist_ok=True)
+
+        # Write binary audio content correctly
         with open(filename, "wb") as f:
-            f.write(audio)
+            f.write(response.read())
 
         return filename
 
