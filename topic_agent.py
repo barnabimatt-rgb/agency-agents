@@ -7,9 +7,8 @@ class TopicAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.notion = Client(auth=os.getenv("NOTION_API_KEY"))
-        self.db_id = os.getenv("NOTION_TASK_DB")  # same DB your tasks come from
+        self.db_id = os.getenv("NOTION_TASK_DB")
 
-        # Core niche stack
         self.niches = [
             "Hybrid Fitness (HYROX, endurance, tactical strength)",
             "AI automation and workflow systems",
@@ -19,7 +18,6 @@ class TopicAgent:
         ]
 
     def generate_topics(self, n=3):
-        """Generate n high-performing short-form video ideas."""
         prompt = f"""
         You are an elite content strategist. Generate {n} viral short-form video ideas 
         that combine these niches:
@@ -45,12 +43,18 @@ class TopicAgent:
             messages=[{"role": "user", "content": prompt}]
         )
 
-        text = response.choices[0].message["content"]
-        ideas = [line.split(". ", 1)[1] for line in text.split("\n") if ". " in line]
+        # FIXED: new SDK uses .message.content
+        raw = response.choices[0].message.content
+
+        ideas = [
+            line.split(". ", 1)[1]
+            for line in raw.split("\n")
+            if ". " in line
+        ]
+
         return ideas
 
     def get_existing_topics(self):
-        """Fetch existing topics from Notion to avoid duplicates."""
         pages = self.notion.databases.query(database_id=self.db_id)
         existing = set()
 
@@ -63,7 +67,6 @@ class TopicAgent:
         return existing
 
     def write_topic_to_notion(self, topic):
-        """Insert a new topic as a task in Notion."""
         self.notion.pages.create(
             parent={"database_id": self.db_id},
             properties={
@@ -73,7 +76,6 @@ class TopicAgent:
         )
 
     def run(self, n=3):
-        """Generate topics, filter duplicates, write new ones to Notion."""
         print("Generating new content topics...")
 
         ideas = self.generate_topics(n)
