@@ -12,3 +12,4 @@ Pillow
 schedule
 pytube
 moviepy
+notion-client==2.2.1
