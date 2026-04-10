@@ -8,8 +8,8 @@ notion = Client(auth=NOTION_API_KEY)
 
 class NotionWrapper:
     def get_pending_tasks(self):
-        response = notion.databases.query(
-            database_id=NOTION_DB,
+        response = notion.databases.query_database(
+            NOTION_DB,
             filter={
                 "property": "Status",
                 "select": {"equals": "Pending"}
