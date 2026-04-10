@@ -1,6 +1,7 @@
 from openai import OpenAI
 import os
 import subprocess
+import base64
 import requests
 
 # Initialize OpenAI client
@@ -12,8 +13,11 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ============================================================
 
 class SimpleVideoAgent:
+    def __init__(self):
+        self.client = client
+
     def generate_script(self, topic):
-        response = client.chat.completions.create(
+        response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Write a short, punchy 45-second script."},
@@ -22,63 +26,25 @@ class SimpleVideoAgent:
         )
         return response.choices[0].message.content
 
-    def generate_image(self, prompt, filename="output/image.jpg"):
-        os.makedirs("output", exist_ok=True)
+    def generate_image(self, prompt, filename="output/image.png"):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-        # Try up to 3 times
-        for attempt in range(3):
-            # Step 1: Convert topic into a visual description
-            visual_prompt = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Convert the topic into a concrete visual scene for an illustration."},
-                    {"role": "user", "content": f"Topic: {prompt}"}
-                ]
-            ).choices[0].message.content
-
-            # Step 2: Generate the image
-            img = client.images.generate(
-                model="gpt-image-1",
-                prompt=visual_prompt,
-                size="1024x1024"
-            )
-
-            # Step 3: Validate response
-            if img and img.data and img.data[0].url:
-                img_url = img.data[0].url
-                img_bytes = requests.get(img_url).content
-
-                with open(filename, "wb") as f:
-                    f.write(img_bytes)
-
-                return filename
-
-        # FINAL FALLBACK — guaranteed to work
-        fallback_prompt = (
-            "A clean, modern, abstract background with soft gradients, "
-            "smooth lighting, and subtle geometric shapes. High-quality, cinematic."
+        result = self.client.images.generate(
+            model="gpt-image-1.5",
+            prompt=prompt
         )
 
-        img = client.images.generate(
-            model="gpt-image-1",
-            prompt=fallback_prompt,
-            size="1024x1024"
-        )
+        # Extract base64 image data
+        image_base64 = result.data[0].b64_json
 
-        if not img or not img.data or not img.data[0].url:
-            raise ValueError("OpenAI image model failed after retries and fallback")
-
-        img_url = img.data[0].url
-        img_bytes = requests.get(img_url).content
-
+        # Decode and save
         with open(filename, "wb") as f:
-            f.write(img_bytes)
+            f.write(base64.b64decode(image_base64))
 
         return filename
 
-
     def generate_voice(self, script, filename="output/audio.mp3"):
-        audio = client.audio.speech.create(
+        audio = self.client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice="alloy",
             input=script
@@ -96,46 +62,3 @@ class SimpleVideoAgent:
         cmd = [
             "ffmpeg",
             "-loop", "1",
-            "-i", image_path,
-            "-i", audio_path,
-            "-c:v", "libx264",
-            "-tune", "stillimage",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-pix_fmt", "yuv420p",
-            "-shortest",
-            output
-        ]
-
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return output
-
-    def run(self, topic):
-        script = self.generate_script(topic)
-        img = self.generate_image(topic)
-        audio = self.generate_voice(script)
-        video = self.assemble_video(img, audio)
-        return video, script
-
-
-# ============================================================
-# MID-TIER VIDEO AGENT (placeholder for now)
-# ============================================================
-
-class MidTierVideoAgent:
-    def run(self, topic):
-        simple = SimpleVideoAgent()
-        return simple.run(topic)
-
-
-# ============================================================
-# HYBRID AGENT (fallback mode)
-# ============================================================
-
-class HybridAgent:
-    def __init__(self):
-        self.simple = SimpleVideoAgent()
-        self.mid = MidTierVideoAgent()
-
-    def run(self, topic):
-        return self.simple.run(topic)
