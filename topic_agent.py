@@ -1,5 +1,4 @@
 import os
-import random
 from notion_client import Client
 from openai import OpenAI
 
@@ -7,8 +6,11 @@ class TopicAgent:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.notion = Client(auth=os.getenv("NOTION_API_KEY"))
-        self.db_id = os.getenv("NOTION_TASK_DB")
 
+        # Unified Notion DB
+        self.db_id = os.getenv("NOTION_DATABASE_ID")
+
+        # Your niche stack
         self.niches = [
             "Hybrid Fitness (HYROX, endurance, tactical strength)",
             "AI automation and workflow systems",
@@ -18,6 +20,7 @@ class TopicAgent:
         ]
 
     def generate_topics(self, n=3):
+        """Generate n high-performing short-form video ideas."""
         prompt = f"""
         You are an elite content strategist. Generate {n} viral short-form video ideas 
         that combine these niches:
@@ -43,7 +46,7 @@ class TopicAgent:
             messages=[{"role": "user", "content": prompt}]
         )
 
-        # FIXED: new SDK uses .message.content
+        # New SDK format
         raw = response.choices[0].message.content
 
         ideas = [
@@ -55,6 +58,7 @@ class TopicAgent:
         return ideas
 
     def get_existing_topics(self):
+        """Fetch existing topics from Notion to avoid duplicates."""
         pages = self.notion.databases.query(database_id=self.db_id)
         existing = set()
 
@@ -67,15 +71,17 @@ class TopicAgent:
         return existing
 
     def write_topic_to_notion(self, topic):
+        """Insert a new topic as a task in Notion."""
         self.notion.pages.create(
             parent={"database_id": self.db_id},
             properties={
                 "Name": {"title": [{"text": {"content": topic}}]},
-                "Status": {"status": {"name": "Pending"}}
+                "Status": {"select": {"name": "Pending"}}
             }
         )
 
     def run(self, n=3):
+        """Generate topics, filter duplicates, write new ones to Notion."""
         print("Generating new content topics...")
 
         ideas = self.generate_topics(n)
