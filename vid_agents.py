@@ -62,3 +62,46 @@ class SimpleVideoAgent:
         cmd = [
             "ffmpeg",
             "-loop", "1",
+            "-i", image_path,
+            "-i", audio_path,
+            "-c:v", "libx264",
+            "-tune", "stillimage",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-pix_fmt", "yuv420p",
+            "-shortest",
+            output
+        ]
+
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return output
+
+    def run(self, topic):
+        script = self.generate_script(topic)
+        img = self.generate_image(topic)
+        audio = self.generate_voice(script)
+        video = self.assemble_video(img, audio)
+        return video, script
+
+
+# ============================================================
+# MID-TIER VIDEO AGENT (placeholder for now)
+# ============================================================
+
+class MidTierVideoAgent:
+    def run(self, topic):
+        simple = SimpleVideoAgent()
+        return simple.run(topic)
+
+
+# ============================================================
+# HYBRID AGENT (fallback mode)
+# ============================================================
+
+class HybridAgent:
+    def __init__(self):
+        self.simple = SimpleVideoAgent()
+        self.mid = MidTierVideoAgent()
+
+    def run(self, topic):
+        return self.simple.run(topic)
