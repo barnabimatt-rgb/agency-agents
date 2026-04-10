@@ -22,24 +22,36 @@ class SimpleVideoAgent:
         )
         return response.choices[0].message.content
 
-    def generate_image(self, prompt, filename="output/image.jpg"):
-        img = client.images.generate(
-            model="gpt-image-1",
-            prompt=f"High-quality cinematic illustration representing: {prompt}",
-            size="1024x1024"
-        )
+def generate_image(self, prompt, filename="output/image.jpg"):
+    # Step 1: Convert topic into a visual description
+    visual_prompt = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Convert the topic into a concrete visual scene for an illustration."},
+            {"role": "user", "content": f"Topic: {prompt}"}
+        ]
+    ).choices[0].message.content
 
-        if not img or not img.data or not img.data[0].url:
-            raise ValueError("OpenAI returned no image URL")
+    # Step 2: Generate the image
+    img = client.images.generate(
+        model="gpt-image-1",
+        prompt=visual_prompt,
+        size="1024x1024"
+    )
 
-        img_url = img.data[0].url
-        img_bytes = requests.get(img_url).content
+    # Step 3: Validate response
+    if not img or not img.data or not img.data[0].url:
+        raise ValueError("OpenAI returned no image URL")
 
-        os.makedirs("output", exist_ok=True)
-        with open(filename, "wb") as f:
-            f.write(img_bytes)
+    img_url = img.data[0].url
+    img_bytes = requests.get(img_url).content
 
-        return filename
+    os.makedirs("output", exist_ok=True)
+    with open(filename, "wb") as f:
+        f.write(img_bytes)
+
+    return filename
+
 
     def generate_voice(self, script, filename="output/audio.mp3"):
         audio = client.audio.speech.create(
