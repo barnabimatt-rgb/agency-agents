@@ -1,44 +1,58 @@
-import openai
+from openai import OpenAI
 import os
 import subprocess
-from PIL import Image
 import requests
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+# ============================================================
+# SIMPLE VIDEO AGENT
+# ============================================================
 
 class SimpleVideoAgent:
     def generate_script(self, topic):
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Write a short, punchy 45-second script."},
                 {"role": "user", "content": f"Topic: {topic}"}
             ]
         )
-        return response["choices"][0]["message"]["content"]
+        return response.choices[0].message.content
 
     def generate_image(self, prompt, filename="output/image.jpg"):
-        img = openai.images.generate(
+        img = client.images.generate(
             model="gpt-image-1",
             prompt=prompt,
             size="1024x1024"
         )
-        img_bytes = requests.get(img.data[0].url).content
+        img_url = img.data[0].url
+        img_bytes = requests.get(img_url).content
+
+        os.makedirs("output", exist_ok=True)
         with open(filename, "wb") as f:
             f.write(img_bytes)
+
         return filename
 
     def generate_voice(self, script, filename="output/audio.mp3"):
-        audio = openai.audio.speech.create(
+        audio = client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice="alloy",
             input=script
         )
+
+        os.makedirs("output", exist_ok=True)
         with open(filename, "wb") as f:
             f.write(audio)
+
         return filename
 
     def assemble_video(self, image_path, audio_path, output="output/video.mp4"):
+        os.makedirs("output", exist_ok=True)
+
         cmd = [
             "ffmpeg",
             "-loop", "1",
@@ -52,7 +66,8 @@ class SimpleVideoAgent:
             "-shortest",
             output
         ]
-        subprocess.run(cmd)
+
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return output
 
     def run(self, topic):
@@ -62,12 +77,21 @@ class SimpleVideoAgent:
         video = self.assemble_video(img, audio)
         return video, script
 
+
+# ============================================================
+# MID-TIER VIDEO AGENT (placeholder for now)
+# ============================================================
+
 class MidTierVideoAgent:
     def run(self, topic):
-        # Placeholder until full mid-tier pipeline is added
-        # For now, fallback to simple agent
-        return SimpleVideoAgent().run(topic)
+        # Placeholder — currently falls back to SimpleVideoAgent
+        simple = SimpleVideoAgent()
+        return simple.run(topic)
 
+
+# ============================================================
+# HYBRID AGENT (fallback mode)
+# ============================================================
 
 class HybridAgent:
     def __init__(self):
@@ -75,5 +99,5 @@ class HybridAgent:
         self.mid = MidTierVideoAgent()
 
     def run(self, topic):
-        # Fallback mode: always simple for now
+        # For now, always use SimpleVideoAgent
         return self.simple.run(topic)
