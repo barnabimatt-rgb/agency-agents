@@ -8,20 +8,24 @@ notion = Client(auth=NOTION_API_KEY)
 
 class NotionWrapper:
     def get_pending_tasks(self):
-        response = notion.databases.query_database(
-            NOTION_DB,
-            filter={
-                "property": "Status",
-                "select": {"equals": "Pending"}
+        response = notion.databases.query(
+            **{
+                "database_id": NOTION_DB,
+                "filter": {
+                    "property": "Status",
+                    "select": {"equals": "Pending"}
+                }
             }
         )
         return response.get("results", [])
 
     def write_video_url(self, page_id, url):
         notion.pages.update(
-            page_id=page_id,
-            properties={
-                "Video URL": {"url": url},
-                "Status": {"select": {"name": "Done"}}
+            **{
+                "page_id": page_id,
+                "properties": {
+                    "Video URL": {"url": url},
+                    "Status": {"select": {"name": "Done"}}
+                }
             }
         )
