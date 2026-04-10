@@ -22,36 +22,35 @@ class SimpleVideoAgent:
         )
         return response.choices[0].message.content
 
-def generate_image(self, prompt, filename="output/image.jpg"):
-    # Step 1: Convert topic into a visual description
-    visual_prompt = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "Convert the topic into a concrete visual scene for an illustration."},
-            {"role": "user", "content": f"Topic: {prompt}"}
-        ]
-    ).choices[0].message.content
+    def generate_image(self, prompt, filename="output/image.jpg"):
+        # Step 1: Convert topic into a visual description
+        visual_prompt = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Convert the topic into a concrete visual scene for an illustration."},
+                {"role": "user", "content": f"Topic: {prompt}"}
+            ]
+        ).choices[0].message.content
 
-    # Step 2: Generate the image
-    img = client.images.generate(
-        model="gpt-image-1",
-        prompt=visual_prompt,
-        size="1024x1024"
-    )
+        # Step 2: Generate the image
+        img = client.images.generate(
+            model="gpt-image-1",
+            prompt=visual_prompt,
+            size="1024x1024"
+        )
 
-    # Step 3: Validate response
-    if not img or not img.data or not img.data[0].url:
-        raise ValueError("OpenAI returned no image URL")
+        # Step 3: Validate response
+        if not img or not img.data or not img.data[0].url:
+            raise ValueError("OpenAI returned no image URL")
 
-    img_url = img.data[0].url
-    img_bytes = requests.get(img_url).content
+        img_url = img.data[0].url
+        img_bytes = requests.get(img_url).content
 
-    os.makedirs("output", exist_ok=True)
-    with open(filename, "wb") as f:
-        f.write(img_bytes)
+        os.makedirs("output", exist_ok=True)
+        with open(filename, "wb") as f:
+            f.write(img_bytes)
 
-    return filename
-
+        return filename
 
     def generate_voice(self, script, filename="output/audio.mp3"):
         audio = client.audio.speech.create(
@@ -94,15 +93,12 @@ def generate_image(self, prompt, filename="output/image.jpg"):
         return video, script
 
 
-
-
 # ============================================================
 # MID-TIER VIDEO AGENT (placeholder for now)
 # ============================================================
 
 class MidTierVideoAgent:
     def run(self, topic):
-        # Placeholder — currently falls back to SimpleVideoAgent
         simple = SimpleVideoAgent()
         return simple.run(topic)
 
@@ -117,5 +113,4 @@ class HybridAgent:
         self.mid = MidTierVideoAgent()
 
     def run(self, topic):
-        # For now, always use SimpleVideoAgent
         return self.simple.run(topic)
